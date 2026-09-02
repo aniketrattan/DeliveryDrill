@@ -1,0 +1,1 @@
+{"id":"evt-created-001","type":"payment.created","payment_id":"P123","amount":100,"currency":"AUD"}

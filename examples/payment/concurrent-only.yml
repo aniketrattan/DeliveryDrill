@@ -1,0 +1,28 @@
+version: 1
+name: idempotency-race
+target:
+  url: http://localhost:8080/webhooks
+  timeout: 2s
+headers:
+  Content-Type: application/json
+signature:
+  type: hmac
+  algorithm: sha256
+  header: X-Signature
+  secret:
+    env: WEBHOOK_SECRET
+events:
+  completed:
+    file: fixtures/payment-completed.json
+    event_id: evt-completed-001
+    event_type: payment.completed
+tests:
+  - name: concurrent duplicate is idempotent
+    event: completed
+    fault:
+      duplicate: { count: 20, concurrency: 20 }
+    assertions:
+      - name: one transaction exists
+        request: { method: GET, url: http://localhost:8080/payments/P123 }
+        expect: { status: 200, json: { $.transactions.length: 1 } }
+

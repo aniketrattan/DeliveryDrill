@@ -1,0 +1,33 @@
+version: 1
+name: state-regression-invariant
+target:
+  url: http://localhost:8080/webhooks
+  timeout: 2s
+headers:
+  Content-Type: application/json
+signature:
+  type: hmac
+  algorithm: sha256
+  header: X-Signature
+  secret:
+    env: WEBHOOK_SECRET
+events:
+  completed:
+    file: fixtures/payment-completed.json
+    event_id: evt-completed-001
+    event_type: payment.completed
+  processing:
+    file: fixtures/payment-processing.json
+    event_id: evt-processing-001
+    event_type: payment.processing
+tests:
+  - name: completion never regresses
+    sequence: [completed, processing]
+invariants:
+  - name: payment state cannot regress
+    source:
+      method: GET
+      url: http://localhost:8080/payments/P123
+    field: $.status
+    order: [CREATED, PROCESSING, COMPLETED, FAILED, REFUNDED]
+

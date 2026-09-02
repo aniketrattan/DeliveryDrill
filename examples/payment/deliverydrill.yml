@@ -1,0 +1,57 @@
+version: 1
+name: payment-settlement
+target:
+  url: http://localhost:8080/webhooks
+  method: POST
+  timeout: 2s
+headers:
+  Content-Type: application/json
+signature:
+  type: hmac
+  algorithm: sha256
+  header: X-Signature
+  secret:
+    env: WEBHOOK_SECRET
+events:
+  payment-created:
+    file: fixtures/payment-created.json
+    event_id: evt-created-001
+    event_type: payment.created
+  payment-processing:
+    file: fixtures/payment-processing.json
+    event_id: evt-processing-001
+    event_type: payment.processing
+  payment-completed:
+    file: fixtures/payment-completed.json
+    event_id: evt-completed-001
+    event_type: payment.completed
+tests:
+  - name: valid delivery
+    event: payment-completed
+  - name: sequential duplicate delivery
+    event: payment-completed
+    fault:
+      duplicate:
+        count: 5
+  - name: concurrent duplicate delivery
+    event: payment-completed
+    fault:
+      duplicate:
+        count: 20
+        concurrency: 20
+  - name: invalid signature rejected
+    event: payment-completed
+    fault:
+      tamper_signature: true
+  - name: out-of-order state remains completed
+    sequence: [payment-completed, payment-processing]
+assertions:
+  - name: payment remains completed
+    request:
+      method: GET
+      url: http://localhost:8080/payments/P123
+    expect:
+      status: 200
+      json:
+        $.status: COMPLETED
+
